@@ -8,7 +8,7 @@ export class CommunityCollabPlugin implements BasePlugin<AppState> {
 
     // --- 网络与通信引擎 ---
     private socket: any = null;
-    private readonly WS_URL = 'http://localhost:3000/physics-collab';
+    private readonly WS_URL = 'https://gauss-backend-abc.onrender.com/physics-collab';
     private isConnected = false;
     private offlineQueue: any[] = [];
     private isRemoteSyncing = false;
