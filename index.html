@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全景电磁学智能实验室 - 沉浸模式</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] } };</script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        /* 隐藏全局滚动条，保持全景纯净 */
+        body { margin: 0; overflow: hidden; background-color: #000; }
+        /* 为悬浮面板定制优美的隐形滚动条 */
+        .glass-scrollbar::-webkit-scrollbar { width: 6px; }
+        .glass-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .glass-scrollbar::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.4); border-radius: 10px; }
+        .glass-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(156, 163, 175, 0.8); }
+    </style>
+</head>
+<body class="w-screen h-screen relative font-sans text-sm">
+
+    <div id="canvas-container" class="absolute inset-0 z-0 bg-black"></div>
+
+    <div class="absolute inset-0 z-10 pointer-events-none flex flex-col justify-between p-6">
+
+        <div class="flex-grow flex justify-between items-end w-full h-full relative">
+
+            <div class="w-full md:w-[420px] pointer-events-auto mb-4">
+                <div class="bg-slate-900 bg-opacity-60 backdrop-blur-xl rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-slate-700/50 p-6 transition-all hover:bg-opacity-80">
+                    <h2 class="text-white/90 text-lg font-bold mb-2 flex items-center">
+                        <span class="mr-2">⚙️</span> 空间参数控制矩阵
+                    </h2>
+                    <div class="mt-4 grid grid-cols-2 gap-4"></div>
+                </div>
+            </div>
+
+            <div class="w-full md:w-2/5 p-8 max-w-[500px] h-[95vh] pointer-events-auto bg-white/80 backdrop-blur-2xl rounded-3xl shadow-[-10px_0_40px_rgba(0,0,0,0.15)] border border-white/50 overflow-y-auto glass-scrollbar flex flex-col">
+                <div class="flex justify-center items-center h-full text-gray-500">
+                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    全息内核启动中...
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
