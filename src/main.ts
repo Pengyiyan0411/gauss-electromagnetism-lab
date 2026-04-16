@@ -1,7 +1,7 @@
 import './styles/index.css'; // Tailwind 样式
 import { Kernel } from './core';
 import { AppState } from './types';
-
+import { TeacherDashboardPlugin } from './plugins/adaptive-learning/teacher-dashboard.plugin';
 // 🌟 【新增 1】：导入 lil-gui 库
 import GUI from 'lil-gui';
 
@@ -79,7 +79,7 @@ kernel.plugins.register(new PoyntingControlsPlugin());
 kernel.plugins.register(new PoyntingDataPlugin());
 kernel.plugins.register(new AdaptiveLearningPlugin());
 kernel.plugins.register(new AuthSyncPlugin());
-
+kernel.plugins.register(new TeacherDashboardPlugin());
 // 注册 AI 助教插件
 kernel.plugins.register(new AiAssistantPlugin());
 
