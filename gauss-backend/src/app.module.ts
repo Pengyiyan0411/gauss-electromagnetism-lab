@@ -46,9 +46,7 @@ import { CollaborationModule } from './modules/collaboration/collaboration.modul
             max: 20,
             idleTimeoutMillis: 30000,
             // 🌟 必须添加这个 ssl 配置块，否则 Node.js 会因为证书不匹配拒绝连接
-            ssl: dbUrl ? {
-              rejectUnauthorized: false,
-            } : undefined,
+            ssl: dbUrl ? { rejectUnauthorized: false } : false,
           },
         };
       },
