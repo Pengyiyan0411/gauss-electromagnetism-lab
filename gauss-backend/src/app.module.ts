@@ -14,49 +14,51 @@ import { CollaborationModule } from './modules/collaboration/collaboration.modul
 @Module({
   imports: [
     // --- 全局配置模块 ---
-    // 加载 .env 文件中的环境变量，供全局使用
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
     }),
 
     // --- 数据库连接模块 (TypeORM) ---
-    // 采用异步配置方式，从环境变量中安全读取数据库凭证
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        host: configService.get<string>('DB_HOST', 'localhost'),
-        port: configService.get<number>('DB_PORT', 5432),
-        username: configService.get<string>('DB_USERNAME', 'gauss_admin'),
-        password: configService.get<string>('DB_PASSWORD', 'strong_password'),
-        database: configService.get<string>('DB_DATABASE', 'gauss_db'),
-        // 自动加载实体文件 (entities)
-        autoLoadEntities: true,
-        // 🌟 开发模式开启自动同步表结构；生产环境建议关闭并使用 Migrations
-        synchronize: true,
-        // 提高并发性能的连接池配置
-        extra: {
-          max: 20,
-          idleTimeoutMillis: 30000,
-        },
-      }),
+      useFactory: (configService: ConfigService) => {
+        // 🌟 核心修复逻辑：判断当前是否在生产环境（Render）
+        const dbUrl = configService.get<string>('DATABASE_URL');
+
+        return {
+          type: 'postgres',
+          // 如果有 DATABASE_URL 则优先使用，否则 fallback 到独立配置
+          url: dbUrl,
+          host: !dbUrl ? configService.get<string>('DB_HOST', 'localhost') : undefined,
+          port: !dbUrl ? configService.get<number>('DB_PORT', 5432) : undefined,
+          username: !dbUrl ? configService.get<string>('DB_USERNAME', 'gauss_admin') : undefined,
+          password: !dbUrl ? configService.get<string>('DB_PASSWORD', 'strong_password') : undefined,
+          database: !dbUrl ? configService.get<string>('DB_DATABASE', 'gauss_db') : undefined,
+
+          autoLoadEntities: true,
+          synchronize: true, // 开发模式建议开启，生产环境需谨慎
+
+          // 👑 解决 Render 连接拒绝的核心配置
+          ssl: dbUrl ? true : false,
+          extra: {
+            max: 20,
+            idleTimeoutMillis: 30000,
+            // 🌟 必须添加这个 ssl 配置块，否则 Node.js 会因为证书不匹配拒绝连接
+            ssl: dbUrl ? {
+              rejectUnauthorized: false,
+            } : undefined,
+          },
+        };
+      },
     }),
 
     // --- 业务功能模块组装 ---
-
-    // 认证与用户管理
     AuthModule,
     UsersModule,
-
-    // 物理场景云端同步 (与前端 AppState 对接)
     ScenesModule,
-
-    // 自适应学习进度与答题记录 (保存你的 100% 奖杯状态)
     LearningModule,
-
-    // 多人实时协作 (基于 WebSocket 的物理状态广播)
     CollaborationModule,
   ],
   controllers: [],
