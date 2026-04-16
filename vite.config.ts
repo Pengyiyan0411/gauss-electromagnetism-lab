@@ -2,15 +2,13 @@ import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
-  // 保持你原有的其他配置（如 alias 等）
   build: {
     target: 'esnext',
     rollupOptions: {
       output: {
-        // 极致优化：手动拆包，防止单个 js 文件过大导致首屏卡顿
+        // 极致优化：只拆分庞大的 three.js，绝对安全
         manualChunks: {
-          'three-core': ['three'],
-          'vendor': ['axios', 'socket.io-client']
+          'three-core': ['three']
         }
       }
     }
@@ -18,10 +16,10 @@ export default defineConfig({
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
+      // 【万无一失修改 1】删除了硬性要求 favicon 的配置，避免找不到文件报错
       workbox: {
-        // 静态资源强缓存策略
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,wasm,wgsl}'],
+        // 【万无一失修改 2】只缓存最核心必定存在的前端三剑客文件，忽略可能不存在的特殊格式
+        globPatterns: ['**/*.{js,css,html}'],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
