@@ -8,7 +8,7 @@ export class AuthSyncPlugin implements BasePlugin<AppState> {
     version = '1.1.0'; // 修复防连点 Bug 与精准错误拦截
     private context!: PluginContext<AppState>;
 
-    private readonly API_BASE = 'https://gauss-backend.onrender.com';
+    private readonly API_BASE = 'https://gauss-electromagnetism-lab-backend.onrender.com';
     private token: string | null = localStorage.getItem('gauss_token');
     private user: any = JSON.parse(localStorage.getItem('gauss_user') || 'null');
 

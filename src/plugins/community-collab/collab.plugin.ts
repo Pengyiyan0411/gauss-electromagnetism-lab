@@ -8,7 +8,7 @@ export class CommunityCollabPlugin implements BasePlugin<AppState> {
 
     // --- 网络与通信引擎 ---
     private socket: any = null;
-    private readonly WS_URL = 'wss://gauss-backend.onrender.com/physics-collab';
+    private readonly WS_URL = 'wss://gauss-electromagnetism-lab-backend.onrender.com/physics-collab';
     private isConnected = false;
     private offlineQueue: any[] = [];
     private isRemoteSyncing = false;
