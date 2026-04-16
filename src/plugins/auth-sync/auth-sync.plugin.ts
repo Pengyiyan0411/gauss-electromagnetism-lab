@@ -5,9 +5,10 @@ interface ApiResponse<T = any> { code: number; success: boolean; data: T; messag
 
 export class AuthSyncPlugin implements BasePlugin<AppState> {
     name = 'app:auth-sync';
-    version = '1.1.0'; // 修复防连点 Bug 与精准错误拦截
+    version = '1.3.0'; // 🌟 终极融合版：前端画板验证码 + 强制开启教师端
     private context!: PluginContext<AppState>;
 
+    // ✅ 这里是你刚刚打通的真实后端地址，绝对正确
     private readonly API_BASE = 'https://gauss-electromagnetism-lab-backend.onrender.com';
     private token: string | null = localStorage.getItem('gauss_token');
     private user: any = JSON.parse(localStorage.getItem('gauss_user') || 'null');
@@ -17,8 +18,10 @@ export class AuthSyncPlugin implements BasePlugin<AppState> {
     private syncTimer: number | null = null;
     private pendingSync: boolean = false;
 
-    // 🌟 增加防连点锁
     private isAuthProcessing = false;
+
+    // 🌟 用于存储当前本地生成的 Canvas 验证码文本
+    private currentCaptcha = '';
 
     install(context: PluginContext<AppState>) { this.context = context; }
 
@@ -30,7 +33,7 @@ export class AuthSyncPlugin implements BasePlugin<AppState> {
     }
 
     // ==========================================
-    // 🛡️ 1. API 拦截器引擎 (完美修复重试与报错逻辑)
+    // 🛡️ 1. API 拦截器引擎
     // ==========================================
     private async request<T>(endpoint: string, options: RequestInit = {}, retryCount = 0): Promise<ApiResponse<T>> {
         if (!this.isOnline) throw new Error('当前处于离线模式');
@@ -43,7 +46,6 @@ export class AuthSyncPlugin implements BasePlugin<AppState> {
         try {
             const response = await fetch(`${this.API_BASE}${endpoint}`, { ...options, headers });
 
-            // 🌟 修复：区分“密码错误”和“Token过期”的 401 状态
             if (response.status === 401) {
                 this.logout(false);
                 if (endpoint.includes('/auth/login')) throw new Error('账号不存在或密码错误');
@@ -51,25 +53,20 @@ export class AuthSyncPlugin implements BasePlugin<AppState> {
             }
 
             const data: ApiResponse<T> = await response.json();
-
-            // 如果后端明确返回业务失败（比如邮箱被注册），直接抛出错误信息
             if (!data.success) throw new Error(data.message);
-
             return data;
 
         } catch (error: any) {
-            // 如果是业务抛出的 Error（明确包含 message 且不是网络断开），直接向外抛出，停止重试
             if (error.message && error.message !== 'Failed to fetch' && !error.message.includes('fetch')) {
                 throw error;
             }
 
-            // 只有底层网络失败 (服务器没开、跨域、断网) 才进行重试
             if (retryCount < 3) {
                 console.warn(`[Sync Engine] 请求底层网络失败，1秒后进行第 ${retryCount + 1} 次重试...`);
                 await new Promise(res => setTimeout(res, 1000));
                 return this.request<T>(endpoint, options, retryCount + 1);
             }
-            throw new Error('无法连接到后端服务器，请确认已运行 npm run start:dev');
+            throw new Error('无法连接到后端服务器');
         }
     }
 
@@ -121,10 +118,45 @@ export class AuthSyncPlugin implements BasePlugin<AppState> {
     }
 
     // ==========================================
-    // 👤 3. 用户认证服务 (带防连点与精准报错)
+    // 🎨 3. Canvas 纯前端验证码生成器 (无需后端图片)
+    // ==========================================
+    private refreshCaptcha() {
+        const canvas = document.getElementById('captcha-canvas') as HTMLCanvasElement;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        const chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        this.currentCaptcha = '';
+
+        // 画背景
+        ctx.fillStyle = '#f3f4f6';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 画随机字符
+        for (let i = 0; i < 4; i++) {
+            const char = chars[Math.floor(Math.random() * chars.length)];
+            this.currentCaptcha += char;
+            ctx.font = 'bold 22px Arial';
+            ctx.fillStyle = `rgb(${Math.random()*150},${Math.random()*150},${Math.random()*150})`;
+            ctx.fillText(char, 10 + i * 20, 28);
+        }
+
+        // 画干扰线
+        for (let i = 0; i < 5; i++) {
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.beginPath();
+            ctx.moveTo(Math.random() * canvas.width, Math.random() * canvas.height);
+            ctx.lineTo(Math.random() * canvas.width, Math.random() * canvas.height);
+            ctx.stroke();
+        }
+    }
+
+    // ==========================================
+    // 👤 4. 用户认证服务 (带验证码校验与强制提权)
     // ==========================================
     private async handleAuth(action: 'login' | 'register') {
-        if (this.isAuthProcessing) return; // 🌟 阻止连点
+        if (this.isAuthProcessing) return;
 
         const email = (document.getElementById('auth-email') as HTMLInputElement).value;
         const password = (document.getElementById('auth-password') as HTMLInputElement).value;
@@ -132,7 +164,14 @@ export class AuthSyncPlugin implements BasePlugin<AppState> {
 
         if (!email || !password) { errorEl.innerText = '邮箱和密码不能为空'; return; }
 
-        // 🌟 锁定按钮 UI
+        // 🌟 注册和登录都强制校验这个纯前端验证码
+        const captchaInput = (document.getElementById('auth-captcha') as HTMLInputElement).value;
+        if (captchaInput.toLowerCase() !== this.currentCaptcha.toLowerCase()) {
+            errorEl.innerText = '验证码错误，请重新输入';
+            this.refreshCaptcha(); // 验证失败自动刷新
+            return;
+        }
+
         this.isAuthProcessing = true;
         const btnId = action === 'login' ? 'auth-submit-btn' : 'auth-register-btn';
         const otherBtnId = action === 'login' ? 'auth-register-btn' : 'auth-submit-btn';
@@ -156,6 +195,11 @@ export class AuthSyncPlugin implements BasePlugin<AppState> {
 
             const profileRes = await this.request('/users/profile');
             this.user = profileRes.data;
+
+            // 👑 【开挂代码】：强制把当前用户身份提升为 admin！
+            // 这样你登录后直接就能按 T 打开教师端大屏！
+            this.user.role = 'admin';
+
             localStorage.setItem('gauss_user', JSON.stringify(this.user));
 
             this.checkAuthStatus();
@@ -163,10 +207,9 @@ export class AuthSyncPlugin implements BasePlugin<AppState> {
             this.pullCloudData();
 
         } catch (error: any) {
-            // 🌟 明确显示红字错误
             errorEl.innerText = error.message || '网络或凭证错误';
+            this.refreshCaptcha(); // 如果后端报错，也要刷新验证码
         } finally {
-            // 🌟 无论成败，彻底解锁按钮
             this.isAuthProcessing = false;
             btn.innerText = originalText;
             btn.disabled = false;
@@ -184,7 +227,7 @@ export class AuthSyncPlugin implements BasePlugin<AppState> {
     }
 
     // ==========================================
-    // 🎨 4. UI 渲染与事件绑定
+    // 🎨 5. UI 渲染与事件绑定
     // ==========================================
     private initUI() {
         const headerHTML = `
@@ -212,10 +255,19 @@ export class AuthSyncPlugin implements BasePlugin<AppState> {
                             <label class="block text-xs font-bold text-gray-700 mb-1">账号邮箱</label>
                             <input type="email" id="auth-email" class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="student@gauss.com">
                         </div>
-                        <div class="mb-2">
+                        <div class="mb-4">
                             <label class="block text-xs font-bold text-gray-700 mb-1">安全密码</label>
                             <input type="password" id="auth-password" class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="••••••••">
                         </div>
+
+                        <div class="mb-2">
+                            <label class="block text-xs font-bold text-gray-700 mb-1">验证码</label>
+                            <div class="flex space-x-2">
+                                <input type="text" id="auth-captcha" class="flex-1 px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="不区分大小写">
+                                <canvas id="captcha-canvas" width="100" height="40" class="cursor-pointer border border-gray-300 rounded-lg shadow-sm" title="点击刷新"></canvas>
+                            </div>
+                        </div>
+
                         <p id="auth-error" class="text-red-500 text-xs font-bold h-4 mb-4"></p>
 
                         <div class="flex space-x-3">
@@ -249,6 +301,9 @@ export class AuthSyncPlugin implements BasePlugin<AppState> {
             else this.openAuthModal();
         });
 
+        // 🌟 点击验证码图片时刷新
+        document.getElementById('captcha-canvas')?.addEventListener('click', () => this.refreshCaptcha());
+
         document.getElementById('auth-close-btn')?.addEventListener('click', () => this.closeAuthModal());
         document.getElementById('auth-submit-btn')?.addEventListener('click', () => this.handleAuth('login'));
         document.getElementById('auth-register-btn')?.addEventListener('click', () => this.handleAuth('register'));
@@ -259,7 +314,8 @@ export class AuthSyncPlugin implements BasePlugin<AppState> {
         const syncIndicator = document.getElementById('sync-indicator');
 
         if (this.user && btn && syncIndicator) {
-            btn.innerHTML = `<span class="mr-2">🧑‍🎓</span> ${this.user.nickname || '物理探索者'} <span class="text-xs ml-2 opacity-70 hover:opacity-100">(退出)</span>`;
+            // 注意：这里也给你加了个 👑 皇冠图标，彰显你尊贵的 Admin 身份！
+            btn.innerHTML = `<span class="mr-2">👑</span> ${this.user.nickname || '物理指导老师'} <span class="text-xs ml-2 opacity-70 hover:opacity-100">(退出)</span>`;
             btn.className = 'bg-slate-800 hover:bg-red-600 text-white rounded-full px-4 py-2 cursor-pointer transition shadow-lg flex items-center font-bold text-sm border border-slate-600';
             syncIndicator.classList.remove('hidden');
         } else if (btn && syncIndicator) {
@@ -283,7 +339,10 @@ export class AuthSyncPlugin implements BasePlugin<AppState> {
         }
     }
 
-    private openAuthModal() { document.getElementById('auth-modal')?.classList.remove('hidden'); }
+    private openAuthModal() {
+        document.getElementById('auth-modal')?.classList.remove('hidden');
+        this.refreshCaptcha(); // 🌟 每次打开弹窗，自动生成新验证码
+    }
     private closeAuthModal() { document.getElementById('auth-modal')?.classList.add('hidden'); }
 
     deactivate() {}
