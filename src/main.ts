@@ -133,7 +133,7 @@ window.addEventListener('DOMContentLoaded', () => {
   kernel.start();
   kernel.plugins.activate('app:auth-sync');
   kernel.plugins.activate('app:community-collab');
-
+  kernel.plugins.activate('TeacherDashboard');
   // 1. 先激活全局 UI 和学习中心
   kernel.plugins.activate('app:navigation');
   kernel.plugins.activate('edu:adaptive-learning');
